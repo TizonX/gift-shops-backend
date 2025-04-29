@@ -67,13 +67,19 @@ const verifyOtp = async (req, res) => {
     await user.save();
     // Generate JWT token after successful OTP verification
     const token = generateToken(user._id, user.email, user.role);
-    // Set token in HTTP-only cookie
-    res.cookie("token", token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production", // only HTTPS in prod
-      sameSite: "strict",
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-    });
+    // For web clients, set the token as an HTTP-only cookie
+    if (
+      req.headers["user-agent"] &&
+      req.headers["user-agent"].includes("Mozilla")
+    ) {
+      // Set token as HTTP-only cookie for web clients (browsers)
+      res.cookie("jwt", token, {
+        httpOnly: true,
+        sameSite: "Strict",
+        secure: process.env.NODE_ENV === "production", // Ensure secure cookie in production
+        maxAge: 7 * 24 * 60 * 60 * 1000, // Cookie expiration (7 days)
+      });
+    }
     // Send the token back to the user
     res.status(200).json({
       message: "OTP verified successfully.",
