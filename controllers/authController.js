@@ -65,8 +65,14 @@ const verifyOtp = async (req, res) => {
     user.otp = undefined;
     user.otpExpiry = undefined;
     await user.save();
+    // Generate JWT token after successful OTP verification
+    const token = generateToken(user._id, user.role);
 
-    res.status(200).json({ message: "OTP verified successfully." });
+    // Send the token back to the user
+    res.status(200).json({
+      message: "OTP verified successfully.",
+      token: token, // Send the token in the response
+    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Server error, please try again." });
