@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
-const validator = require('validator');
+const validator = require("validator");
 
 const addressSchema = new mongoose.Schema(
   {
@@ -55,7 +55,7 @@ const userSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ['customer', 'admin', 'vendor', 'moderator', 'guest'],
+      enum: ["customer", "admin", "vendor", "moderator", "guest"],
       default: "customer",
     },
     isVerified: {
@@ -95,7 +95,9 @@ userSchema.pre("save", async function (next) {
 
 // 📌 Method to compare password during login
 userSchema.methods.comparePassword = async function (candidatePassword) {
-  return await bcrypt.compare(candidatePassword, this.password);
+  const secretKey = process.env.SECRET_KEY;
+  const passwordWithSecret = candidatePassword + secretKey;
+  return await bcrypt.compare(passwordWithSecret, this.password);
 };
 
 module.exports = mongoose.model("User", userSchema);

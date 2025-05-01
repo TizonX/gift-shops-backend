@@ -10,7 +10,6 @@ const sendEmail = async (to, subject, text) => {
     text: `Your OTP is ${subject}`,
     html: `<strong>Your OTP is ${subject}</strong>`,
   };
-  console.log("msg ", msg);
   try {
     await sgMail.send(msg);
   } catch (error) {

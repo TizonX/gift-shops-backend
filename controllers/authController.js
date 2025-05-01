@@ -1,4 +1,5 @@
 const User = require("../models/User");
+const bcrypt = require("bcryptjs");
 const generateOtp = require("../utils/generateOtp"); // Utility to generate OTP
 const sendEmail = require("../utils/sendEmail"); // Utility to send email via SendGrid
 
@@ -90,9 +91,85 @@ const verifyOtp = async (req, res) => {
     res.status(500).json({ message: "Server error, please try again." });
   }
 };
+const login = async (req, res) => {
+  const { email, password } = req.body;
+  try {
+    // Step 1.1: Check if user exists
+    const user = await User.findOne({ email }).select("+password");
 
+    if (!user) {
+      return res
+        .status(404)
+        .json({ status: 0, message: "User does not exist." });
+    }
+    // Step 1.2: Compare password
+    const secretKey = process.env.SECRET_KEY;
+    const passwordWithSecret = password + secretKey;
+    const isMatch = await bcrypt.compare(passwordWithSecret, user.password);
+    if (!isMatch) {
+      return res
+        .status(401)
+        .json({ status: 0, message: "Invalid credentials." });
+    }
+
+    // Step 2: Check if user is verified
+    if (!user.isVerified) {
+      const currentTime = Date.now();
+
+      // OTP expired
+      if (user.otpExpiry || currentTime > user.otpExpiry) {
+        const newOtp = generateOtp();
+        user.otp = newOtp;
+        user.otpExpiry = currentTime + 10 * 60 * 1000; // 10 minutes
+        await user.save();
+
+        // Send new OTP
+        await sendEmail(user.email, newOtp);
+
+        return res.status(403).json({
+          status: 0,
+          message: "User not verified. OTP sent to your email.",
+        });
+      }
+
+      // OTP not expired
+      return res.status(403).json({
+        status: 0,
+        message: "User not verified. Please share the OTP to verify.",
+      });
+    }
+
+    // User is verified: proceed to login
+    // Generate JWT token after successful OTP verification
+    const token = generateToken(user._id, user.email, user.role);
+    // For web clients, set the token as an HTTP-only cookie
+    if (
+      req.headers["user-agent"] &&
+      req.headers["user-agent"].includes("Mozilla")
+    ) {
+      // Set token as HTTP-only cookie for web clients (browsers)
+      res.cookie("jwt", token, {
+        httpOnly: true,
+        sameSite: "Strict",
+        secure: process.env.NODE_ENV === "production", // Ensure secure cookie in production
+        maxAge: 7 * 24 * 60 * 60 * 1000, // Cookie expiration (7 days)
+      });
+    }
+    return res.status(200).json({
+      status: 1,
+      message: "Login successful.",
+      token: token, // Send the token in the response
+    });
+  } catch (error) {
+    console.error("Login error:", error);
+    return res
+      .status(500)
+      .json({ status: 0, message: "Server error. Try again later." });
+  }
+};
 // Exporting functions
 module.exports = {
   signup,
   verifyOtp,
+  login,
 };
