@@ -2,6 +2,7 @@ const User = require("../models/User");
 const bcrypt = require("bcryptjs");
 const generateOtp = require("../utils/generateOtp"); // Utility to generate OTP
 const sendEmail = require("../utils/sendEmail"); // Utility to send email via SendGrid
+const generateToken = require("../utils/generateToken");
 
 // Signup function
 const signup = async (req, res) => {
