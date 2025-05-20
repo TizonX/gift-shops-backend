@@ -7,11 +7,12 @@ const connectDB = require("./config/db");
 const authRoute = require("./routes/authRoutes");
 const productRoutes = require("./routes/productRoutes");
 const cookieParser = require("cookie-parser");
+const corsOptions = require("./config/corsConfig");
 dotenv.config(); // Load environment variables from .env
 
 const app = express();
 app.use(express.json()); // For parsing JSON request bodies
-app.use(cors()); // Optional: if you want to enable cross-origin requests
+app.use(cors(corsOptions)); // Optional: if you want to enable cross-origin requests
 app.use(cookieParser());
 app.use(express.urlencoded({ extended: true }));
 

@@ -62,7 +62,7 @@ const verifyOtp = async (req, res) => {
       return res.status(400).json({ message: "OTP has expired." });
     }
 
-    // Mark user as verified and clear OTP
+    // Mark user as verified and clear 1
     user.isVerified = true;
     user.otp = undefined;
     user.otpExpiry = undefined;
@@ -77,7 +77,7 @@ const verifyOtp = async (req, res) => {
       // Set token as HTTP-only cookie for web clients (browsers)
       res.cookie("jwt", token, {
         httpOnly: true,
-        sameSite: "Strict",
+        sameSite: "lax",
         secure: process.env.NODE_ENV === "production", // Ensure secure cookie in production
         maxAge: 7 * 24 * 60 * 60 * 1000, // Cookie expiration (7 days)
       });
@@ -151,7 +151,7 @@ const login = async (req, res) => {
       // Set token as HTTP-only cookie for web clients (browsers)
       res.cookie("jwt", token, {
         httpOnly: true,
-        sameSite: "Strict",
+        sameSite: "lax",
         secure: process.env.NODE_ENV === "production", // Ensure secure cookie in production
         maxAge: 7 * 24 * 60 * 60 * 1000, // Cookie expiration (7 days)
       });
