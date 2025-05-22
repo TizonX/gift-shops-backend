@@ -168,9 +168,28 @@ const login = async (req, res) => {
       .json({ status: 0, message: "Server error. Try again later." });
   }
 };
+const logout = async (req, res) => {
+  try {
+    res.clearCookie("jwt", {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      path: "/", // must match login cookie path
+    });
+
+    return res.status(200).json({ message: "Logout successful." });
+  } catch (error) {
+    console.error("Logout error:", error);
+    return res
+      .status(500)
+      .json({ status: 0, message: "Server error. Try again later." });
+  }
+};
+
 // Exporting functions
 module.exports = {
   signup,
   verifyOtp,
   login,
+  logout,
 };
