@@ -1,4 +1,4 @@
-import mongoose from "mongoose";
+const mongoose = require("mongoose");
 
 const productSchema = new mongoose.Schema({
   title: { type: String, required: true },
@@ -61,9 +61,10 @@ const productSchema = new mongoose.Schema({
     title: { type: String },
     description: { type: String },
   },
-
+  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+  updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
 });
 
-export default mongoose.model("Product", productSchema);
+module.exports = mongoose.model("Product", productSchema);

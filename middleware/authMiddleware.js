@@ -1,10 +1,9 @@
-const jwt = require('jsonwebtoken');
+const jwt = require("jsonwebtoken");
 
 // Middleware to check for JWT in cookies or Authorization header
 const authMiddleware = (req, res, next) => {
   // Try to get token from HTTP-only cookie (for web browsers)
   const token = req.cookies.jwt || req.headers.authorization?.split(" ")[1];
-
   if (!token) {
     return res.status(401).json({ message: "Unauthorized, no token found." });
   }

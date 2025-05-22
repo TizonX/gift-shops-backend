@@ -23,8 +23,8 @@ connectDB();
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 app.use("/api/v1/auth", authRoute);
+app.use("/api/v1/product", productRoutes);
 // products images upload
-
 app.use("/api/v1/category/products", productRoutes);
 
 // Define the port your server will listen on
