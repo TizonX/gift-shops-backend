@@ -120,7 +120,6 @@ const getProducts = async (req, res) => {
       return { price: { $gte: min, $lte: max } };
     });
   }
-  console.log("Query : ", query);
   // Get total count of matching products for pagination info
   const total = await Product.countDocuments(query);
 
