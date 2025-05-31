@@ -71,5 +71,70 @@ const uploadCSV = (req, res) => {
       }
     });
 };
+// get all products
+const getProducts = async (req, res) => {
+  let { category, brand, price, page = 1, limit = 10 } = req.query;
 
-module.exports = { uploadCSV };
+  page = parseInt(page);
+  limit = parseInt(limit);
+
+  // Convert category and brand to arrays if they are comma-separated strings
+  if (typeof category === "string") category = category.split(",");
+  if (typeof brand === "string") brand = brand.split(",");
+
+  // Parse price ranges (like "100-200,300-400")
+  let priceRanges = [];
+  if (price) {
+    if (typeof price === "string") {
+      priceRanges = price.split(",").map((range) => {
+        const [min, max] = range.split("-").map(Number);
+        return { min, max };
+      });
+    } else if (Array.isArray(price)) {
+      priceRanges = price
+        .join(",")
+        .split(",")
+        .map((range) => {
+          const [min, max] = range.split("-").map(Number);
+          return { min, max };
+        });
+    }
+  }
+
+  // Build MongoDB query object
+  const query = {};
+
+  // Add category filter if exists
+  if (category && category.length > 0) {
+    query.category = { $in: category };
+  }
+
+  // Add brand filter if exists
+  if (brand && brand.length > 0) {
+    query.brand = { $in: brand };
+  }
+
+  // Add price filter using $or with priceRanges
+  if (priceRanges.length > 0) {
+    query.$or = priceRanges.map(({ min, max }) => {
+      return { price: { $gte: min, $lte: max } };
+    });
+  }
+  console.log("Query : ", query);
+  // Get total count of matching products for pagination info
+  const total = await Product.countDocuments(query);
+
+  // Fetch paginated filtered products
+  const products = await Product.find(query)
+    .skip((page - 1) * limit)
+    .limit(limit);
+
+  res.json({
+    total,
+    page,
+    limit,
+    products,
+  });
+};
+
+module.exports = { uploadCSV, getProducts };

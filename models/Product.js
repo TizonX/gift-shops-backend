@@ -4,11 +4,11 @@ const productSchema = new mongoose.Schema({
   title: { type: String, required: true },
   slug: { type: String, required: true, unique: true },
   description: { type: String },
-  brand: { type: String },
-  category: { type: String, required: true },
+  brand: { type: String, index: true },
+  category: { type: String, required: true, index: true },
   subCategory: { type: String },
 
-  price: { type: Number, required: true },
+  price: { type: Number, required: true, index: true },
   discount: { type: Number, default: 0 },
   finalPrice: { type: Number }, // you can auto-calculate this with a pre-save hook
   stock: { type: Number, required: true },
@@ -66,5 +66,6 @@ const productSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
 });
-
+// 🔍 Full-text index for search
+productSchema.index({ title: "text", description: "text" });
 module.exports = mongoose.model("Product", productSchema);

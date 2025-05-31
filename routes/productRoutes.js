@@ -3,9 +3,10 @@ const router = express.Router();
 const { upload } = require("../middleware/multer");
 const { csvUpload } = require("../middleware/csvMulter");
 const authMiddleware = require("../middleware/authMiddleware");
-const { uploadCSV } = require("../controllers/productController");
 const authorizeRole = require("../middleware/authorizeRole");
+const { uploadCSV, getProducts } = require("../controllers/productController");
 
+// product image upload
 router.post(
   "/upload-product-images",
   upload.array("upload", 10),
@@ -42,4 +43,6 @@ router.post(
   csvUpload.single("file"),
   uploadCSV
 );
+// get all product
+router.get("/get-all-products", getProducts);
 module.exports = router;
