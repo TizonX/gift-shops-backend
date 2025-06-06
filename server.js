@@ -6,6 +6,7 @@ const path = require("path");
 const connectDB = require("./config/db");
 const authRoute = require("./routes/authRoutes");
 const productRoutes = require("./routes/productRoutes");
+const userRoutes = require("./routes/userRoutes");
 const cookieParser = require("cookie-parser");
 const corsOptions = require("./config/corsConfig");
 dotenv.config(); // Load environment variables from .env
@@ -24,6 +25,7 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 app.use("/api/v1/auth", authRoute);
 app.use("/api/v1/product", productRoutes);
+app.use("/api/v1/users", userRoutes);
 // products images upload
 app.use("/api/v1/category/products", productRoutes);
 

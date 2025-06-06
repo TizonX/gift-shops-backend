@@ -71,69 +71,212 @@ const uploadCSV = (req, res) => {
       }
     });
 };
-// get all products
+
+// Get products with filters, search, and pagination
 const getProducts = async (req, res) => {
-  let { category, brand, price, page = 1, limit = 10 } = req.query;
+  try {
+    let {
+      search = req.query.query,
+      category,
+      brand,
+      price,
+      sortBy = "createdAt",
+      sortOrder = "desc",
+      page = 1,
+      limit = 10,
+    } = req.query;
 
-  page = parseInt(page);
-  limit = parseInt(limit);
+    // Build query object
+    const query = {};
+    const conditions = [];
 
-  // Convert category and brand to arrays if they are comma-separated strings
-  if (typeof category === "string") category = category.split(",");
-  if (typeof brand === "string") brand = brand.split(",");
-
-  // Parse price ranges (like "100-200,300-400")
-  let priceRanges = [];
-  if (price) {
-    if (typeof price === "string") {
-      priceRanges = price.split(",").map((range) => {
-        const [min, max] = range.split("-").map(Number);
-        return { min, max };
+    // Search functionality
+    if (search) {
+      conditions.push({
+        $or: [
+          { title: new RegExp(search, "i") },
+          { description: new RegExp(search, "i") },
+          { brand: new RegExp(search, "i") },
+          { category: new RegExp(search, "i") },
+          { tags: new RegExp(search, "i") },
+        ],
       });
-    } else if (Array.isArray(price)) {
-      priceRanges = price
-        .join(",")
-        .split(",")
-        .map((range) => {
+    }
+
+    // Convert category and brand to arrays if they are comma-separated strings
+    if (typeof category === "string") {
+      category = category.split(",").map((cat) => cat.trim());
+    }
+    if (typeof brand === "string") {
+      brand = brand.split(",").map((b) => b.trim());
+    }
+
+    // Category filter
+    if (category && category.length > 0) {
+      conditions.push({
+        category: { $in: category.map((cat) => new RegExp(cat, "i")) },
+      });
+    }
+
+    // Brand filter
+    if (brand && brand.length > 0) {
+      conditions.push({
+        brand: { $in: brand.map((b) => new RegExp(b, "i")) },
+      });
+    }
+
+    // Parse price ranges (format: "100-200,300-400" or "100-200")
+    if (price) {
+      let priceRanges = [];
+
+      if (typeof price === "string") {
+        priceRanges = price.split(",").map((range) => {
           const [min, max] = range.split("-").map(Number);
           return { min, max };
         });
+      } else if (Array.isArray(price)) {
+        priceRanges = price.map((range) => {
+          const [min, max] = range.split("-").map(Number);
+          return { min, max };
+        });
+      }
+
+      if (priceRanges.length > 0) {
+        conditions.push({
+          $or: priceRanges.map(({ min, max }) => ({
+            price: {
+              $gte: min,
+              $lte: max,
+            },
+          })),
+        });
+      }
     }
-  }
 
-  // Build MongoDB query object
-  const query = {};
+    // Combine all conditions with AND
+    if (conditions.length > 0) {
+      query.$and = conditions;
+    }
 
-  // Add category filter if exists
-  if (category && category.length > 0) {
-    query.category = { $in: category };
-  }
+    // Calculate pagination
+    const skip = (Number(page) - 1) * Number(limit);
 
-  // Add brand filter if exists
-  if (brand && brand.length > 0) {
-    query.brand = { $in: brand };
-  }
+    // Prepare sort object
+    const sortOptions = {};
+    sortOptions[sortBy] = sortOrder === "asc" ? 1 : -1;
 
-  // Add price filter using $or with priceRanges
-  if (priceRanges.length > 0) {
-    query.$or = priceRanges.map(({ min, max }) => {
-      return { price: { $gte: min, $lte: max } };
+    // Execute query with pagination and sorting
+    const products = await Product.find(query)
+      .sort(sortOptions)
+      .skip(skip)
+      .limit(Number(limit))
+      .select("title images price category brand stock ratings");
+
+    // Get total count for pagination
+    const total = await Product.countDocuments(query);
+
+    res.status(200).json({
+      status: 1,
+      data: {
+        products,
+        pagination: {
+          total,
+          page: Number(page),
+          pages: Math.ceil(total / Number(limit)),
+          limit: Number(limit),
+        },
+        appliedFilters: {
+          search,
+          category,
+          brand,
+          price,
+          sortBy,
+          sortOrder,
+        },
+      },
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      status: 0,
+      message: "Error fetching products",
     });
   }
-  // Get total count of matching products for pagination info
-  const total = await Product.countDocuments(query);
-
-  // Fetch paginated filtered products
-  const products = await Product.find(query)
-    .skip((page - 1) * limit)
-    .limit(limit);
-
-  res.json({
-    total,
-    page,
-    limit,
-    products,
-  });
 };
 
-module.exports = { uploadCSV, getProducts };
+// Search ahead with similar products suggestion
+const searchAhead = async (req, res) => {
+  try {
+    const { query, limit = 5 } = req.query;
+
+    if (!query) {
+      return res.status(200).json({
+        status: 1,
+        data: {
+          suggestions: [],
+          similar: [],
+        },
+      });
+    }
+
+    // Create a case-insensitive regex pattern
+    const searchPattern = new RegExp(query, "i");
+
+    // Get direct matches first (for autocomplete suggestions)
+    const suggestions = await Product.find({
+      $or: [
+        { title: searchPattern },
+        { category: searchPattern },
+        { tags: searchPattern },
+      ],
+    })
+      .select("title") // Only select title field
+      .limit(Number(limit));
+
+    // Get similar products using more flexible matching
+    const similar = await Product.find({
+      $and: [
+        // Exclude exact matches we already have
+        { _id: { $nin: suggestions.map((s) => s._id) } },
+        {
+          $or: [
+            // Partial word matches in title
+            { title: new RegExp(query.split(" ").join("|"), "i") },
+            // Same category as matched products
+            { category: { $in: suggestions.map((s) => s.category) } },
+          ],
+        },
+      ],
+    })
+      .select("title") // Only select title field
+      .limit(Number(limit));
+
+    res.status(200).json({
+      status: 1,
+      data: {
+        suggestions: suggestions.map((item) => ({
+          _id: item._id,
+          title: item.title,
+          type: "suggestion",
+        })),
+        similar: similar.map((item) => ({
+          _id: item._id,
+          title: item.title,
+          type: "similar",
+        })),
+      },
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      status: 0,
+      message: "Error performing search",
+    });
+  }
+};
+
+module.exports = {
+  uploadCSV,
+  getProducts,
+  searchAhead,
+};
