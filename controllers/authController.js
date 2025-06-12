@@ -77,7 +77,7 @@ const verifyOtp = async (req, res) => {
       // Set token as HTTP-only cookie for web clients (browsers)
       res.cookie("jwt", token, {
         httpOnly: true,
-        sameSite: "none",
+        sameSite: "None",
         secure: process.env.NODE_ENV === "production", // Ensure secure cookie in production
         maxAge: 7 * 24 * 60 * 60 * 1000, // Cookie expiration (7 days)
       });
@@ -151,7 +151,7 @@ const login = async (req, res) => {
       // Set token as HTTP-only cookie for web clients (browsers)
       res.cookie("jwt", token, {
         httpOnly: true,
-        sameSite: "none",
+        sameSite: "None",
         secure: process.env.NODE_ENV === "production", // Ensure secure cookie in production
         maxAge: 7 * 24 * 60 * 60 * 1000, // Cookie expiration (7 days)
       });
@@ -172,7 +172,7 @@ const logout = async (req, res) => {
   try {
     res.clearCookie("jwt", {
       httpOnly: true,
-      sameSite: "none",
+      sameSite: "None",
       secure: process.env.NODE_ENV === "production",
       path: "/", // must match login cookie path
     });
